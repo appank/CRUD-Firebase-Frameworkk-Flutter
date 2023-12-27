@@ -1,16 +1,42 @@
+import 'package:animate_do/animate_do.dart';
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:crud_firebase/Class/databasehalper_reltime.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
-class InputDataReltime extends StatefulWidget {
-  const InputDataReltime({Key? key}) : super(key: key);
+// class Student {
+//   String? key;
+//   StudentData? studentData;
+
+//   Student({this.key, this.studentData});
+// }
+
+// class StudentData {
+//   String? name;
+//   String? age;
+//   String? subject;
+
+//   StudentData({this.name, this.age, this.subject});
+
+//   StudentData.fromJson(Map<dynamic, dynamic> json) {
+//     name = json["name"];
+//     age = json["age"];
+//     subject = json["subject"];
+//   }
+// }
+
+class InputDataRealtime extends StatefulWidget {
+  const InputDataRealtime({Key? key}) : super(key: key);
 
   @override
-  State<InputDataReltime> createState() => _InputDataReltimeState();
+  State<InputDataRealtime> createState() => _InputDataRealtimeState();
 }
 
-class _InputDataReltimeState extends State<InputDataReltime> {
-  DatabaseReference dbRef = FirebaseDatabase.instance.ref();
+class _InputDataRealtimeState extends State<InputDataRealtime> {
+  DatabaseReference dbRef = FirebaseDatabase.instance.reference();
 
   final TextEditingController _edtNameController = TextEditingController();
   final TextEditingController _edtAgeController = TextEditingController();
@@ -23,7 +49,6 @@ class _InputDataReltimeState extends State<InputDataReltime> {
   @override
   void initState() {
     super.initState();
-
     retrieveStudentData();
   }
 
@@ -33,13 +58,18 @@ class _InputDataReltimeState extends State<InputDataReltime> {
       appBar: AppBar(
         title: const Text("Student Directory"),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            for (int i = 0; i < studentList.length; i++)
-              studentWidget(studentList[i])
-          ],
-        ),
+      body: Column(
+        children: [
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView.builder(
+              itemCount: studentList.length,
+              itemBuilder: (context, index) {
+                return studentWidget(studentList[index]);
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -49,75 +79,77 @@ class _InputDataReltimeState extends State<InputDataReltime> {
           updateStudent = false;
           studentDialog();
         },
-        child: const Icon(Icons.save),
+        child: const Icon(Icons.add),
       ),
     );
   }
 
   void studentDialog({String? key}) {
     showDialog(
-        context: context,
-        builder: (context) {
-          return Dialog(
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: _edtNameController,
-                    decoration: const InputDecoration(helperText: "Name"),
-                  ),
-                  TextField(
-                      controller: _edtAgeController,
-                      decoration: const InputDecoration(helperText: "Age")),
-                  TextField(
-                      controller: _edtSubjectController,
-                      decoration: const InputDecoration(helperText: "Subject")),
-                  const SizedBox(
-                    height: 10,
-                  ),
-                  ElevatedButton(
-                      onPressed: () {
-                        Map<String, dynamic> data = {
-                          "name": _edtNameController.text.toString(),
-                          "age": _edtAgeController.text.toString(),
-                          "subject": _edtSubjectController.text.toString()
-                        };
+      context: context,
+      builder: (context) {
+        return Dialog(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _edtNameController,
+                  decoration: const InputDecoration(labelText: "Name"),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _edtAgeController,
+                  decoration: const InputDecoration(labelText: "Age"),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _edtSubjectController,
+                  decoration: const InputDecoration(labelText: "Subject"),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    Map<String, dynamic> data = {
+                      "name": _edtNameController.text.toString(),
+                      "age": _edtAgeController.text.toString(),
+                      "subject": _edtSubjectController.text.toString()
+                    };
 
-                        if (updateStudent) {
-                          dbRef
-                              .child("Students")
-                              .child(key!)
-                              .update(data)
-                              .then((value) {
-                            int index = studentList
-                                .indexWhere((element) => element.key == key);
-                            studentList.removeAt(index);
-                            studentList.insert(
-                                index,
-                                Student(
-                                    key: key,
-                                    studentData: StudentData.fromJson(data)));
-                            setState(() {});
-                            Navigator.of(context).pop();
-                          });
-                        } else {
-                          dbRef
-                              .child("Students")
-                              .push()
-                              .set(data)
-                              .then((value) {
-                            Navigator.of(context).pop();
-                          });
-                        }
-                      },
-                      child: Text(updateStudent ? "Update Data" : "Save Data"))
-                ],
-              ),
+                    if (updateStudent) {
+                      dbRef
+                          .child("Students")
+                          .child(key!)
+                          .update(data)
+                          .then((value) {
+                        int index = studentList
+                            .indexWhere((element) => element.key == key);
+                        studentList.removeAt(index);
+                        studentList.insert(
+                            index,
+                            Student(
+                                key: key,
+                                studentData: StudentData.fromJson(data)));
+                        setState(() {});
+                        Navigator.of(context).pop();
+                        showSuccessSnackBar("Data updated successfully!");
+                      });
+                    } else {
+                      dbRef.child("Students").push().set(data).then((value) {
+                        Navigator.of(context).pop();
+                        showSuccessSnackBar("Data added successfully!");
+                      });
+                    }
+                  },
+                  child: Text(updateStudent ? "Update Data" : "Save Data"),
+                ),
+              ],
             ),
-          );
-        });
+          ),
+        );
+      },
+    );
   }
 
   void retrieveStudentData() {
@@ -142,16 +174,16 @@ class _InputDataReltimeState extends State<InputDataReltime> {
       },
       child: Container(
         width: MediaQuery.of(context).size.width,
-        padding: const EdgeInsets.all(5),
-        margin: const EdgeInsets.only(top: 5, left: 10, right: 10),
+        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(top: 8),
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.black)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.black),
+        ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(student.studentData!.name!),
@@ -160,25 +192,44 @@ class _InputDataReltimeState extends State<InputDataReltime> {
               ],
             ),
             InkWell(
-                onTap: () {
-                  dbRef
-                      .child("Students")
-                      .child(student.key!)
-                      .remove()
-                      .then((value) {
-                    int index = studentList
-                        .indexWhere((element) => element.key == student.key!);
-                    studentList.removeAt(index);
-                    setState(() {});
-                  });
-                },
-                child: const Icon(
-                  Icons.delete,
-                  color: Colors.red,
-                ))
+              onTap: () {
+                dbRef
+                    .child("Students")
+                    .child(student.key!)
+                    .remove()
+                    .then((value) {
+                  int index = studentList
+                      .indexWhere((element) => element.key == student.key!);
+                  studentList.removeAt(index);
+                  setState(() {});
+                  showSuccessSnackBar("Data deleted successfully!");
+                });
+              },
+              child: const Icon(
+                Icons.delete,
+                color: Colors.red,
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  void showSuccessSnackBar(String message) {
+    final snackBar = SnackBar(
+      elevation: 0,
+      behavior: SnackBarBehavior.fixed,
+      backgroundColor: Colors.transparent,
+      content: AwesomeSnackbarContent(
+        title: 'Success!',
+        message: message,
+        contentType: ContentType.success,
+      ),
+    );
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(snackBar);
   }
 }

@@ -7,27 +7,6 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
-// class Student {
-//   String? key;
-//   StudentData? studentData;
-
-//   Student({this.key, this.studentData});
-// }
-
-// class StudentData {
-//   String? name;
-//   String? age;
-//   String? subject;
-
-//   StudentData({this.name, this.age, this.subject});
-
-//   StudentData.fromJson(Map<dynamic, dynamic> json) {
-//     name = json["name"];
-//     age = json["age"];
-//     subject = json["subject"];
-//   }
-// }
-
 class InputDataRealtime extends StatefulWidget {
   const InputDataRealtime({Key? key}) : super(key: key);
 
@@ -46,31 +25,111 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
 
   bool updateStudent = false;
 
+  /// Refreshing Data After every User action
   @override
   void initState() {
     super.initState();
-    retrieveStudentData();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xffFFFDFF),
       appBar: AppBar(
         title: const Text("Student Directory"),
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 16),
-          Expanded(
-            child: ListView.builder(
-              itemCount: studentList.length,
-              itemBuilder: (context, index) {
-                return studentWidget(studentList[index]);
-              },
+      body: updateStudent
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Colors.deepPurpleAccent,
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TopSideTitles(studentList: studentList),
+                studentList.isEmpty
+                    ? const Expanded(child: EmptyListState())
+                    : Expanded(
+                        child: ListView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: studentList.length,
+                          itemBuilder: (context, index) => Slidable(
+                            key: const ValueKey(0),
+                            endActionPane: ActionPane(
+                              motion: const ScrollMotion(),
+                              extentRatio: 0.3,
+                              children: [
+                                SlidableAction(
+                                  flex: 3,
+                                  onPressed: (_) =>
+                                      hapusWidget(studentList[index]),
+                                  foregroundColor: Colors.red,
+                                  icon: Icons.delete,
+                                  label: 'Remove',
+                                  autoClose: true,
+                                ),
+                              ],
+                            ),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 110,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 1,
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        IconButton(
+                                          onPressed: () =>
+                                              editData(studentList[index]),
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                        const Text(
+                                          "Edit",
+                                          style: TextStyle(color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 5,
+                                    child: Card(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15)),
+                                      color: Colors.deepPurpleAccent
+                                          .withOpacity(0.5),
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 5),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                            bottom: 12, left: 12),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            MyData(studentList[index]),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+              ],
             ),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           _edtNameController.text = "";
@@ -118,6 +177,7 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
                     };
 
                     if (updateStudent) {
+                      // Jika updateStudent bernilai true, artinya kita akan melakukan pembaruan
                       dbRef
                           .child("Students")
                           .child(key!)
@@ -131,11 +191,14 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
                             Student(
                                 key: key,
                                 studentData: StudentData.fromJson(data)));
-                        setState(() {});
                         Navigator.of(context).pop();
+                        setState(() {
+                          updateStudent = false;
+                        });
                         showSuccessSnackBar("Data updated successfully!");
                       });
                     } else {
+                      // Jika updateStudent bernilai false, artinya kita akan menambahkan data baru
                       dbRef.child("Students").push().set(data).then((value) {
                         Navigator.of(context).pop();
                         showSuccessSnackBar("Data added successfully!");
@@ -150,17 +213,6 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
         );
       },
     );
-  }
-
-  void retrieveStudentData() {
-    dbRef.child("Students").onChildAdded.listen((data) {
-      StudentData studentData =
-          StudentData.fromJson(data.snapshot.value as Map);
-      Student student =
-          Student(key: data.snapshot.key, studentData: studentData);
-      studentList.add(student);
-      setState(() {});
-    });
   }
 
   Widget studentWidget(Student student) {
@@ -231,5 +283,131 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(snackBar);
+  }
+
+  hapusWidget(Student student) {
+    dbRef.child("Students").child(student.key!).remove().then((value) {
+      int index =
+          studentList.indexWhere((element) => element.key == student.key!);
+      studentList.removeAt(index);
+      setState(() {});
+      showSuccessSnackBar("Data deleted successfully!");
+    });
+  }
+
+  editData(Student student) {
+    _edtNameController.text = student.studentData!.name!;
+    _edtAgeController.text = student.studentData!.age!;
+    _edtSubjectController.text = student.studentData!.subject!;
+    updateStudent = true;
+    studentDialog(key: student.key);
+  }
+
+  MyData(Student student) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(student.studentData!.name!,
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 18,
+            )),
+        Text(student.studentData!.age!,
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 18,
+            )),
+        Text(student.studentData!.subject!,
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 18,
+            )),
+      ],
+    );
+  }
+}
+
+class EmptyListState extends StatelessWidget {
+  const EmptyListState({super.key});
+
+  // @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(
+            height: 10,
+          ),
+          SizedBox(
+            width: double.infinity,
+            height: 300,
+            child: FadeInUp(
+                from: 30,
+                child: Lottie.network(
+                    fit: BoxFit.cover,
+                    'https://lottie.host/6c5d8b9e-aa40-4ca6-bd94-417832dfc644/vSG6B2gPfU.json')),
+          ),
+          const SizedBox(
+            height: 50,
+          ),
+          FadeInUp(
+            from: 30,
+            child: const Text(
+              "All Tasks Done!👍",
+              style: TextStyle(fontSize: 17),
+            ),
+          ),
+          const SizedBox(
+            height: 3,
+          ),
+          FadeInUp(
+            from: 30,
+            delay: const Duration(milliseconds: 400),
+            child: Text(
+              "For Creating a Task Tap on the FAB button👇",
+              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class TopSideTitles extends StatelessWidget {
+  TopSideTitles({
+    super.key,
+    required this.studentList,
+  });
+
+  List<Student> studentList = [];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 15, top: 15, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Hello, Amir!",
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 23,
+              color: Colors.grey.shade500,
+            ),
+          ),
+          Text(
+            "Your \nProjects ${studentList.isNotEmpty ? "(${studentList.length})" : " "}",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 55,
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

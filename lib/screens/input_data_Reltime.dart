@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:animate_do/animate_do.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:crud_firebase/Class/databasehalper_reltime.dart';
@@ -20,6 +22,7 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
   final TextEditingController _edtNameController = TextEditingController();
   final TextEditingController _edtAgeController = TextEditingController();
   final TextEditingController _edtSubjectController = TextEditingController();
+  final TextEditingController _edtDateController = TextEditingController();
 
   List<Student> studentList = [];
 
@@ -29,6 +32,8 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
   @override
   void initState() {
     super.initState();
+    retrieveStudentData();
+    dataload();
   }
 
   @override
@@ -73,7 +78,6 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
                             ),
                             child: SizedBox(
                               width: double.infinity,
-                              height: 110,
                               child: Row(
                                 children: [
                                   Expanded(
@@ -135,6 +139,7 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
           _edtNameController.text = "";
           _edtAgeController.text = "";
           _edtSubjectController.text = "";
+          _edtDateController.text = "";
           updateStudent = false;
           studentDialog();
         },
@@ -155,17 +160,32 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
               children: [
                 TextField(
                   controller: _edtNameController,
-                  decoration: const InputDecoration(labelText: "Name"),
+                  decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.title), labelText: "Name"),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _edtAgeController,
-                  decoration: const InputDecoration(labelText: "Age"),
+                  decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.title), labelText: "Age"),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _edtSubjectController,
-                  decoration: const InputDecoration(labelText: "Subject"),
+                  decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.message), labelText: "Subject"),
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () => _selectDate(context),
+                  child: AbsorbPointer(
+                    child: TextField(
+                      controller: _edtDateController,
+                      decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.date_range),
+                          labelText: "Date"),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
@@ -173,7 +193,8 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
                     Map<String, dynamic> data = {
                       "name": _edtNameController.text.toString(),
                       "age": _edtAgeController.text.toString(),
-                      "subject": _edtSubjectController.text.toString()
+                      "subject": _edtSubjectController.text.toString(),
+                      "date": _edtDateController.text.toString()
                     };
 
                     if (updateStudent) {
@@ -215,58 +236,60 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
     );
   }
 
-  Widget studentWidget(Student student) {
-    return InkWell(
-      onTap: () {
-        _edtNameController.text = student.studentData!.name!;
-        _edtAgeController.text = student.studentData!.age!;
-        _edtSubjectController.text = student.studentData!.subject!;
-        updateStudent = true;
-        studentDialog(key: student.key);
-      },
-      child: Container(
-        width: MediaQuery.of(context).size.width,
-        padding: const EdgeInsets.all(16),
-        margin: const EdgeInsets.only(top: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(student.studentData!.name!),
-                Text(student.studentData!.age!),
-                Text(student.studentData!.subject!),
-              ],
-            ),
-            InkWell(
-              onTap: () {
-                dbRef
-                    .child("Students")
-                    .child(student.key!)
-                    .remove()
-                    .then((value) {
-                  int index = studentList
-                      .indexWhere((element) => element.key == student.key!);
-                  studentList.removeAt(index);
-                  setState(() {});
-                  showSuccessSnackBar("Data deleted successfully!");
-                });
-              },
-              child: const Icon(
-                Icons.delete,
-                color: Colors.red,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget studentWidget(Student student) {
+  //   return InkWell(
+  //     onTap: () {
+  //       _edtNameController.text = student.studentData!.name!;
+  //       _edtAgeController.text = student.studentData!.age!;
+  //       _edtSubjectController.text = student.studentData!.subject!;
+  //       _edtDateController.text = student.studentData!.date!;
+  //       updateStudent = true;
+  //       studentDialog(key: student.key);
+  //     },
+  //     child: Container(
+  //       width: MediaQuery.of(context).size.width,
+  //       padding: const EdgeInsets.all(16),
+  //       margin: const EdgeInsets.only(top: 8),
+  //       decoration: BoxDecoration(
+  //         borderRadius: BorderRadius.circular(10),
+  //         border: Border.all(color: Colors.black),
+  //       ),
+  //       child: Row(
+  //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //         children: [
+  //           Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Text(student.studentData!.name!),
+  //               Text(student.studentData!.age!),
+  //               Text(student.studentData!.subject!),
+  //               Text(student.studentData!.date!),
+  //             ],
+  //           ),
+  //           InkWell(
+  //             onTap: () {
+  //               dbRef
+  //                   .child("Students")
+  //                   .child(student.key!)
+  //                   .remove()
+  //                   .then((value) {
+  //                 int index = studentList
+  //                     .indexWhere((element) => element.key == student.key!);
+  //                 studentList.removeAt(index);
+  //                 setState(() {});
+  //                 showSuccessSnackBar("Data deleted successfully!");
+  //               });
+  //             },
+  //             child: const Icon(
+  //               Icons.delete,
+  //               color: Colors.red,
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   void showSuccessSnackBar(String message) {
     final snackBar = SnackBar(
@@ -290,8 +313,80 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
       int index =
           studentList.indexWhere((element) => element.key == student.key!);
       studentList.removeAt(index);
-      setState(() {});
+      setState(() {
+        dataload();
+      });
       showSuccessSnackBar("Data deleted successfully!");
+    });
+  }
+
+  void dataload() {
+    dbRef.child("Students").onValue.listen((event) {
+      DataSnapshot snapshot = event.snapshot;
+
+      if (snapshot.value != null && snapshot.value is Map) {
+        Map<dynamic, dynamic> data = snapshot.value as Map<dynamic, dynamic>;
+
+        List<Student> updatedList = [];
+
+        data.forEach((key, value) {
+          if (value is Map) {
+            StudentData studentData = StudentData.fromJson(value as Map);
+            updatedList.add(Student(key: key, studentData: studentData));
+          }
+        });
+
+        setState(() {
+          studentList = updatedList;
+        });
+      }
+    });
+  }
+
+  void retrieveStudentData() {
+    dbRef.child("Students").onChildAdded.listen((data) {
+      try {
+        StudentData studentData =
+            StudentData.fromJson(data.snapshot.value as Map);
+        Student student =
+            Student(key: data.snapshot.key, studentData: studentData);
+        studentList.add(student);
+        setState(() {});
+      } catch (e) {
+        print("Error parsing data: $e");
+      }
+    });
+
+    dbRef.child("Students").onChildChanged.listen((data) {
+      try {
+        // Handle perubahan data
+        StudentData studentData =
+            StudentData.fromJson(data.snapshot.value as Map);
+        String key = data.snapshot.key!;
+        int index = studentList.indexWhere((element) => element.key == key);
+        print("Data changed ok: ${data.snapshot.value}");
+        if (index != -1) {
+          setState(() {
+            dataload();
+          });
+        }
+      } catch (e) {
+        print("Error handling data change: $e");
+      }
+    });
+
+    dbRef.child("Students").onChildRemoved.listen((data) {
+      try {
+        print("Data removed: ${data.snapshot.value}");
+        // Handle penghapusan data
+        String key = data.snapshot.key!;
+        studentList.removeWhere((element) => element.key == key);
+        setState(() {
+          dataload();
+        });
+      } catch (e) {
+        print("Error handling data removal: $e");
+      }
     });
   }
 
@@ -299,6 +394,7 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
     _edtNameController.text = student.studentData!.name!;
     _edtAgeController.text = student.studentData!.age!;
     _edtSubjectController.text = student.studentData!.subject!;
+    _edtDateController.text = student.studentData!.date!;
     updateStudent = true;
     studentDialog(key: student.key);
   }
@@ -322,8 +418,28 @@ class _InputDataRealtimeState extends State<InputDataRealtime> {
               color: Colors.white54,
               fontSize: 18,
             )),
+        Text(student.studentData?.date ?? 'No Date',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 18,
+            )),
       ],
     );
+  }
+
+  Future _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(1900),
+        lastDate: DateTime.now());
+
+    if (picked != null && picked != _edtDateController) {
+      setState(() {
+        _edtDateController.text =
+            "${picked.year}-${picked.month}-${picked.day}";
+      });
+    }
   }
 }
 
